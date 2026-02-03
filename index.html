@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>StickerStudio Pro | Professional Sticker Creator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="mobile-tab-settings">
+
+    <!-- Global Pin Dialog -->
+    <div id="pinModal" class="modal hidden">
+        <div class="modal-content">
+            <h4 data-i18n="pin_title">Set as Global Icon</h4>
+            <button class="btn-sm btn-main-action" id="setMainBtn">Main (240x240)</button>
+            <button class="btn-sm btn-tab-action" id="setTabBtn">Tab (96x74)</button>
+            <button class="btn-sm" id="cancelPinBtn" data-i18n="btn_cancel">Cancel</button>
+        </div>
+    </div>
+
+    <aside class="sidebar app-pane" id="sidebarPanel">
+        <div class="sidebar-header">
+            <h1>StickerStudio <small>PRO</small></h1>
+            <div class="lang-switcher">
+                <span class="lang-label">EN</span>
+                <button class="lang-toggle" id="langToggle" aria-label="Switch Language"></button>
+                <span class="lang-label">JP</span>
+            </div>
+        </div>
+
+        <div class="sidebar-content">
+            <div class="section-title" data-i18n="grid_settings">Grid Settings</div>
+            <div class="control-group">
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1"><label data-i18n="cols">Cols</label><input type="number" id="cols" value="4"></div>
+                    <div style="flex:1"><label data-i18n="rows">Rows</label><input type="number" id="rows" value="4"></div>
+                </div>
+            </div>
+
+            <div class="section-title" data-i18n="cleanup_logic">Background Removal</div>
+            <div class="control-group">
+                <label class="check-item" for="bgActive">
+                    <span data-i18n="smart_removal">Auto-Remove BG</span>
+                    <input type="checkbox" id="bgActive" checked>
+                </label>
+            </div>
+            <div class="control-group">
+                <label class="slider-label">
+                    <span data-i18n="tolerance">Sensitivity</span><span id="toleranceVal" class="val-badge">25</span>
+                </label>
+                <input type="range" id="tolerance" min="0" max="150" value="25">
+            </div>
+            <div class="control-group">
+                <label class="slider-label">
+                    <span data-i18n="softness">Smooth Edges</span><span id="softnessVal" class="val-badge">2</span>
+                </label>
+                <input type="range" id="softness" min="0" max="10" value="2">
+            </div>
+
+            <div class="section-title" data-i18n="visual_tweaks">Spacing</div>
+            <div class="control-group">
+                <label class="slider-label">
+                    <span data-i18n="inner_padding">Inner Padding</span><span id="paddingVal" class="val-badge">0%</span>
+                </label>
+                <input type="range" id="padding" min="0" max="30" value="0">
+            </div>
+
+            <div class="section-title" data-i18n="bulk_export">Export Logic</div>
+            <div class="control-group">
+                <select id="exportMode">
+                    <option value="single_pack" data-i18n="opt_single">Single Pack (All Combined)</option>
+                    <option value="folders" data-i18n="opt_folders">Separate Folders</option>
+                </select>
+            </div>
+            <div class="info-box">
+                <span data-i18n="tip_pin">Click the 📌 icon in Preview to set the Main or Tab image.</span>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="btn-download-all" id="dlBtn">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m-7-5 5 5-5 5m5-5H3"/></svg>
+                <span data-i18n="btn_dl_zip">Download All ZIP</span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="gutter v-gutter" id="gutter1"></div>
+
+    <main class="workspace">
+        <section class="pane app-pane" id="editorPanel">
+            <div class="pane-header">
+                <span data-i18n="pane_editor">CROP EDITOR</span>
+                <span id="imgRes" class="res-badge">---</span>
+            </div>
+            <div id="paginationBar" class="tool-bar hidden">
+                <div class="pg-controls">
+                    <button class="btn-sm" id="prevPage">←</button>
+                    <span id="pageCounter">1 / 1</span>
+                    <button class="btn-sm" id="nextPage">→</button>
+                </div>
+                <div class="action-btns">
+                    <button class="btn-sm btn-add" id="addMoreBtn" data-i18n="btn_add">+ Add</button>
+                    <button class="btn-sm btn-del" id="delPageBtn" data-i18n="btn_del">Remove</button>
+                </div>
+            </div>
+            <div class="editor-container">
+                <div id="uploadZone" class="upload-zone">
+                    <svg width="40" height="40" fill="none" stroke="var(--primary)" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v12m0-12 4 4m-4-4-4 4m13 4v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+                    <h3 data-i18n="up_title">Upload Sticker Sheets</h3>
+                    <input type="file" id="fileInput" accept="image/*" multiple class="hidden">
+                </div>
+                <div id="editorWrap" class="crop-wrapper hidden">
+                    <img id="sourceImg">
+                    <div class="selector" id="selector"><div class="resizer" id="resizer"></div></div>
+                </div>
+            </div>
+        </section>
+
+        <div class="gutter v-gutter" id="gutter2"></div>
+
+        <section class="pane preview-pane app-pane" id="previewPanel">
+            <div class="pane-header">
+                <span data-i18n="pane_preview">LIVE PREVIEW</span>
+                <span id="stickerCount" class="res-badge">0 Stickers</span>
+            </div>
+            <div id="bigViewLayer" class="hidden">
+                <div class="big-canvas-wrap" id="bigCanvasContainer"></div>
+                <div class="big-view-footer">
+                    <button class="btn-sm" id="closeBigView" data-i18n="btn_back">Back</button>
+                    <button class="btn-sm btn-add" id="bigViewDownload" data-i18n="btn_dl_png">Save PNG</button>
+                </div>
+            </div>
+            <div id="tilesGrid" class="results-grid"></div>
+        </section>
+    </main>
+
+    <nav class="mobile-nav">
+        <button class="nav-item active" data-tab="settings" data-i18n="nav_settings">Settings</button>
+        <button class="nav-item" data-tab="editor" data-i18n="nav_editor">Editor</button>
+        <button class="nav-item" data-tab="preview" data-i18n="nav_preview">Preview</button>
+    </nav>
+
+<script src="script.js"></script>
+</body>
+</html>
