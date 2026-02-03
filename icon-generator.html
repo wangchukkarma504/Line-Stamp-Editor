@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head><title>Icon Generator</title></head>
+<body>
+<canvas id="icon192" width="192" height="192"></canvas>
+<canvas id="icon512" width="512" height="512"></canvas>
+<script>
+function drawIcon(canvas) {
+    const ctx = canvas.getContext('2d');
+    const size = canvas.width;
+    
+    // Background gradient
+    const gradient = ctx.createLinearGradient(0, 0, size, size);
+    gradient.addColorStop(0, '#6c5ce7');
+    gradient.addColorStop(1, '#5548c8');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    
+    // Draw "S" for Sticker
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${size * 0.6}px Inter, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('S', size/2, size/2);
+}
+
+drawIcon(document.getElementById('icon192'));
+drawIcon(document.getElementById('icon512'));
+
+// Save icons
+setTimeout(() => {
+    ['icon192', 'icon512'].forEach(id => {
+        const canvas = document.getElementById(id);
+        canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = id + '.png';
+            a.click();
+        });
+    });
+}, 100);
+</script>
+</body>
+</html>
