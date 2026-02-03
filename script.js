@@ -208,8 +208,14 @@ function createDrawing(img, offCanvas, targetW, targetH, sData, tx, ty, sheetRef
 
 function render() {
     const curr = state.images[state.currentIndex];
-    if(!curr || !sourceImg.complete || sourceImg.clientWidth === 0) return;
-    const rx = curr.img.naturalWidth / sourceImg.clientWidth, ry = curr.img.naturalHeight / sourceImg.clientHeight;
+    if(!curr || !sourceImg.complete) return;
+    
+    // Use stored dimensions or natural dimensions when sourceImg is hidden (mobile view)
+    const srcW = sourceImg.clientWidth || curr.w || curr.img.naturalWidth;
+    const srcH = sourceImg.clientHeight || curr.h || curr.img.naturalHeight;
+    if(srcW === 0 || srcH === 0) return;
+    
+    const rx = curr.img.naturalWidth / srcW, ry = curr.img.naturalHeight / srcH;
     const cw = (curr.w*rx)/curr.cols, ch = (curr.h*ry)/curr.rows, tx0 = curr.x*rx, ty0 = curr.y*ry, pad = curr.padding/100;
     
     tilesGrid.innerHTML = '';
@@ -230,11 +236,11 @@ function render() {
             badgeClass = "is-tab";
         }
         
-        tilesGrid.appendChild(createGridItem(label, can, i, badgeClass));
+        tilesGrid.appendChild(createGridItem(label, can, i, badgeClass, sData, tx, ty));
     }
 }
 
-function createGridItem(lbl, can, index, badgeClass) {
+function createGridItem(lbl, can, index, badgeClass, sData, tx, ty) {
     const div = document.createElement('div'); div.className = 'grid-item';
     const meta = document.createElement('div'); meta.className = 'item-meta';
     const badge = document.createElement('span'); 
@@ -248,10 +254,6 @@ function createGridItem(lbl, can, index, badgeClass) {
     const view = document.createElement('button'); view.className = 'mini-btn view-btn'; view.innerHTML = getIcon('view');
     view.onclick = () => {
         const curr = state.images[state.currentIndex];
-        const rx = curr.img.naturalWidth / sourceImg.clientWidth, ry = curr.img.naturalHeight / sourceImg.clientHeight;
-        const cw = (curr.w*rx)/curr.cols, ch = (curr.h*ry)/curr.rows;
-        const tx = (curr.x*rx)+(index%curr.cols)*cw, ty = (curr.y*ry)+Math.floor(index/curr.cols)*ch, pad = curr.padding/100;
-        const sData = { sx: tx+(cw*pad), sy: ty+(ch*pad), sw: cw-(cw*pad*2), sh: ch-(ch*pad*2) };
         const bigCan = createDrawing(curr.img, curr.offCanvas, 370, 320, sData, tx, ty, curr);
         document.getElementById('bigCanvasContainer').innerHTML = ''; document.getElementById('bigCanvasContainer').append(bigCan);
         document.getElementById('bigViewDownload').onclick = () => { bigCan.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = "sticker.png"; a.click(); }); };
@@ -282,9 +284,10 @@ document.getElementById('dlBtn').onclick = async () => {
     const zip = new JSZip(); const isSingle = document.getElementById('exportMode').value === 'single_pack'; let globalCounter = 1;
     const processGlobal = async (target, name, size) => {
         const sheet = state.images[target.sheet];
-        const rx = sheet.img.naturalWidth / sourceImg.clientWidth, ry = sheet.img.naturalHeight / sourceImg.clientHeight;
-        const cw = (sheet.w*rx)/sheet.cols, ch = (sheet.h*ry)/sheet.rows;
-        const tx = (sheet.x*rx)+(target.index%sheet.cols)*cw, ty = (sheet.y*ry)+Math.floor(target.index/sheet.cols)*ch, pad = sheet.padding/100;
+        // Use natural dimensions to avoid issues when sourceImg is hidden
+        const natW = sheet.img.naturalWidth, natH = sheet.img.naturalHeight;
+        const cw = natW/sheet.cols, ch = natH/sheet.rows;
+        const tx = (target.index%sheet.cols)*cw, ty = Math.floor(target.index/sheet.cols)*ch, pad = sheet.padding/100;
         const sData = { sx: tx+(cw*pad), sy: ty+(ch*pad), sw: cw-(cw*pad*2), sh: ch-(ch*pad*2) };
         zip.file(name, await new Promise(r => createDrawing(sheet.img, sheet.offCanvas, size[0], size[1], sData, tx, ty, sheet).toBlob(r)));
     };
@@ -292,10 +295,11 @@ document.getElementById('dlBtn').onclick = async () => {
     if (state.globalTab) await processGlobal(state.globalTab, "tab.png", [96, 74]);
     for (let sIdx = 0; sIdx < state.images.length; sIdx++) {
         const item = state.images[sIdx]; const folder = isSingle ? zip : zip.folder(item.name.replace(/\.[^/.]+$/, ""));
-        const rx = item.img.naturalWidth / sourceImg.clientWidth, ry = item.img.naturalHeight / sourceImg.clientHeight;
-        const cw = (item.w*rx)/item.cols, ch = (item.h*ry)/item.rows, tx0 = item.x*rx, ty0 = item.y*ry, pad = item.padding/100;
+        // Use natural dimensions to avoid issues when sourceImg is hidden
+        const natW = item.img.naturalWidth, natH = item.img.naturalHeight;
+        const cw = natW/item.cols, ch = natH/item.rows, pad = item.padding/100;
         for(let i=0; i<item.rows*item.cols; i++) {
-            const tx = tx0+(i%item.cols)*cw, ty = ty0+Math.floor(i/item.cols)*ch;
+            const tx = (i%item.cols)*cw, ty = Math.floor(i/item.cols)*ch;
             const sData = { sx: tx+(cw*pad), sy: ty+(ch*pad), sw: cw-(cw*pad*2), sh: ch-(ch*pad*2) };
             const filename = isSingle ? `${globalCounter.toString().padStart(2,'0')}.png` : `${(i+1).toString().padStart(2,'0')}.png`;
             folder.file(filename, await new Promise(r => createDrawing(item.img, item.offCanvas, 370, 320, sData, tx, ty, item).toBlob(r)));

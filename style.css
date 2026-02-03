@@ -138,6 +138,46 @@ input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; heigh
 .modal-content { background: var(--bg-panel); padding: 28px; border-radius: 20px; width: 100%; max-width: 320px; text-align: center; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
 .modal-content h4 { margin: 0 0 24px 0; color: white; font-weight: 700; font-size: 18px; }
 
+/* Big View Layer (Enlarged Sticker Preview) */
+#bigViewLayer { 
+    position: absolute; 
+    inset: 0; 
+    background: rgba(15, 23, 42, 0.98); 
+    z-index: 50; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center;
+    padding: 20px;
+}
+.big-canvas-wrap { 
+    flex: 1; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    width: 100%;
+    max-height: calc(100% - 80px);
+    overflow: hidden;
+}
+.big-canvas-wrap canvas { 
+    max-width: 100%; 
+    max-height: 100%; 
+    border-radius: 12px;
+    background-color: #161e2e; 
+    background-image: linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+                      linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+                      linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+                      linear-gradient(-45deg, transparent 75%, #1e293b 75%); 
+    background-size: 20px 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.big-view-footer { 
+    display: flex; 
+    gap: 12px; 
+    padding: 16px 0 0 0;
+    flex-shrink: 0;
+}
+
 /* Mobile Logic */
 .mobile-nav { display: none; }
 @media (max-width: 1024px) {

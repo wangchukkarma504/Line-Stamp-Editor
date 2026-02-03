@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="mobile-tab-settings">
+<body class="mobile-tab-editor">
 
     <!-- Global Pin Dialog -->
     <div id="pinModal" class="modal hidden">
@@ -146,8 +146,8 @@
     </main>
 
     <nav class="mobile-nav">
-        <button class="nav-item active" data-tab="settings" data-i18n="nav_settings">Settings</button>
-        <button class="nav-item" data-tab="editor" data-i18n="nav_editor">Editor</button>
+        <button class="nav-item" data-tab="settings" data-i18n="nav_settings">Settings</button>
+        <button class="nav-item active" data-tab="editor" data-i18n="nav_editor">Editor</button>
         <button class="nav-item" data-tab="preview" data-i18n="nav_preview">Preview</button>
     </nav>
 
@@ -156,7 +156,7 @@
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/Line-Stamp-Editor/service-worker.js?v=1.0.3', { scope: '/Line-Stamp-Editor/' })
+        navigator.serviceWorker.register('/Line-Stamp-Editor/service-worker.js?v=1.0.8', { scope: '/Line-Stamp-Editor/' })
             .then((registration) => {
                 console.log('ServiceWorker registered:', registration.scope);
             })
