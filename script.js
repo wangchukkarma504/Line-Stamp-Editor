@@ -13,7 +13,7 @@ function initMobileNav() {
             document.body.className = `${document.body.classList.contains('lang-jp') ? 'lang-jp' : ''} mobile-tab-${item.dataset.tab}`;
             navItems.forEach(i => i.classList.remove('active'));
             item.classList.add('active');
-            setTimeout(() => { updateSelectorUI(); render(); }, 50);
+            requestAnimationFrame(() => { updateSelectorUI(); render(); });
         });
     });
 }
@@ -168,9 +168,9 @@ function createDrawing(img, offCanvas, targetW, targetH, sData, tx, ty, sheetRef
     if(sheetRef && sheetRef.bgActive) {
         const imgData = ctx.getImageData(0, 0, can.width, can.height);
         const d = imgData.data;
-        const sx = Math.max(0, Math.min(Math.floor(tx), offCanvas.width - 1));
-        const sy = Math.max(0, Math.min(Math.floor(ty), offCanvas.height - 1));
-        const sample = offCanvas.getContext('2d').getImageData(sx, sy, 1, 1).data;
+        const sx = Math.max(0, Math.min(Math.floor(tx), Math.floor(offCanvas.width) - 1));
+        const sy = Math.max(0, Math.min(Math.floor(ty), Math.floor(offCanvas.height) - 1));
+        const sample = offCanvas.getContext('2d').getImageData(Math.floor(sx), Math.floor(sy), 1, 1).data;
         const avgBG = [sample[0], sample[1], sample[2]];
         const tol = sheetRef.tolerance, soft = sheetRef.softness;
         const mask = new Uint8Array(can.width * can.height);
@@ -247,8 +247,8 @@ function createGridItem(lbl, can, index, badgeClass) {
     group.append(pin, view); meta.append(badge, group); div.append(meta, can); return div;
 }
 
-document.getElementById('setMainBtn').onclick = () => { state.globalMain = {sheet: state.currentIndex, index: state.pinTarget}; document.getElementById('pinModal').classList.add('hidden'); render(); };
-document.getElementById('setTabBtn').onclick = () => { state.globalTab = {sheet: state.currentIndex, index: state.pinTarget}; document.getElementById('pinModal').classList.add('hidden'); render(); };
+document.getElementById('setMainBtn').onclick = () => { state.globalMain = {sheet: state.currentIndex, index: state.pinTarget}; render(); document.getElementById('pinModal').classList.add('hidden'); };
+document.getElementById('setTabBtn').onclick = () => { state.globalTab = {sheet: state.currentIndex, index: state.pinTarget}; render(); document.getElementById('pinModal').classList.add('hidden'); };
 document.getElementById('cancelPinBtn').onclick = () => { document.getElementById('pinModal').classList.add('hidden'); };
 
 document.getElementById('closeBigView').onclick = () => document.getElementById('bigViewLayer').classList.add('hidden');
