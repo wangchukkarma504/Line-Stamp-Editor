@@ -159,18 +159,22 @@ function updateSelectorUI() {
 });
 
 function createDrawing(img, offCanvas, targetW, targetH, sData, tx, ty, sheetRef) {
-    const can = document.createElement('canvas'); can.width = Math.floor(targetW); can.height = Math.floor(targetH);
+    const canW = Math.floor(targetW);
+    const canH = Math.floor(targetH);
+    const can = document.createElement('canvas'); 
+    can.width = canW; 
+    can.height = canH;
     const ctx = can.getContext('2d');
     const scale = Math.min(targetW / sData.sw, targetH / sData.sh);
     const dw = sData.sw * scale, dh = sData.sh * scale;
     ctx.drawImage(img, sData.sx, sData.sy, sData.sw, sData.sh, (targetW-dw)/2, (targetH-dh)/2, dw, dh);
     
-    if(sheetRef && sheetRef.bgActive) {
-        const imgData = ctx.getImageData(0, 0, can.width, can.height);
+    if(sheetRef && sheetRef.bgActive && offCanvas && offCanvas.width > 0 && offCanvas.height > 0) {
+        const imgData = ctx.getImageData(0, 0, canW, canH);
         const d = imgData.data;
-        const sx = Math.max(0, Math.min(Math.floor(tx), Math.floor(offCanvas.width) - 1));
-        const sy = Math.max(0, Math.min(Math.floor(ty), Math.floor(offCanvas.height) - 1));
-        const sample = offCanvas.getContext('2d').getImageData(Math.floor(sx), Math.floor(sy), 1, 1).data;
+        const sx = Math.floor(Math.max(0, Math.min(tx, offCanvas.width - 1)));
+        const sy = Math.floor(Math.max(0, Math.min(ty, offCanvas.height - 1)));
+        const sample = offCanvas.getContext('2d').getImageData(sx, sy, 1, 1).data;
         const avgBG = [sample[0], sample[1], sample[2]];
         const tol = sheetRef.tolerance, soft = sheetRef.softness;
         const mask = new Uint8Array(can.width * can.height);
@@ -215,8 +219,14 @@ function render() {
         const can = createDrawing(curr.img, curr.offCanvas, 370, 320, sData, tx, ty, curr);
         
         let label = `${i18n[currentLang].sticker}${i+1}`, badgeClass = "";
-        if (state.globalMain?.sheet === state.currentIndex && state.globalMain?.index === i) { label = i18n[currentLang].main_icon; badgeClass="is-main"; }
-        else if (state.globalTab?.sheet === state.currentIndex && state.globalTab?.index === i) { label = i18n[currentLang].tab_icon; badgeClass="is-tab"; }
+        if (state.globalMain?.sheet === state.currentIndex && state.globalMain?.index === i) { 
+            label = i18n[currentLang].main_icon; 
+            badgeClass = "is-main";
+        }
+        else if (state.globalTab?.sheet === state.currentIndex && state.globalTab?.index === i) { 
+            label = i18n[currentLang].tab_icon; 
+            badgeClass = "is-tab";
+        }
         
         tilesGrid.appendChild(createGridItem(label, can, i, badgeClass));
     }
@@ -225,7 +235,9 @@ function render() {
 function createGridItem(lbl, can, index, badgeClass) {
     const div = document.createElement('div'); div.className = 'grid-item';
     const meta = document.createElement('div'); meta.className = 'item-meta';
-    const badge = document.createElement('span'); badge.className = 'sticker-badge ' + badgeClass; badge.textContent = lbl;
+    const badge = document.createElement('span'); 
+    badge.className = badgeClass ? `sticker-badge ${badgeClass}` : 'sticker-badge'; 
+    badge.textContent = lbl;
     const group = document.createElement('div'); group.className = 'icon-btn-group';
     
     const pin = document.createElement('button'); pin.className = 'mini-btn pin-btn'; pin.innerHTML = getIcon('pin');
@@ -247,8 +259,16 @@ function createGridItem(lbl, can, index, badgeClass) {
     group.append(pin, view); meta.append(badge, group); div.append(meta, can); return div;
 }
 
-document.getElementById('setMainBtn').onclick = () => { state.globalMain = {sheet: state.currentIndex, index: state.pinTarget}; render(); document.getElementById('pinModal').classList.add('hidden'); };
-document.getElementById('setTabBtn').onclick = () => { state.globalTab = {sheet: state.currentIndex, index: state.pinTarget}; render(); document.getElementById('pinModal').classList.add('hidden'); };
+document.getElementById('setMainBtn').onclick = () => { 
+    state.globalMain = {sheet: state.currentIndex, index: state.pinTarget}; 
+    render(); 
+    document.getElementById('pinModal').classList.add('hidden'); 
+};
+document.getElementById('setTabBtn').onclick = () => { 
+    state.globalTab = {sheet: state.currentIndex, index: state.pinTarget}; 
+    render(); 
+    document.getElementById('pinModal').classList.add('hidden'); 
+};
 document.getElementById('cancelPinBtn').onclick = () => { document.getElementById('pinModal').classList.add('hidden'); };
 
 document.getElementById('closeBigView').onclick = () => document.getElementById('bigViewLayer').classList.add('hidden');
