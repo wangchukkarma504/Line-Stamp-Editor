@@ -151,12 +151,12 @@
         <button class="nav-item" data-tab="preview" data-i18n="nav_preview">Preview</button>
     </nav>
 
-<script src="script.js"></script>
+<script src="script.js?3"></script>
 <script>
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/Line-Stamp-Editor/service-worker.js?v=1.0.8', { scope: '/Line-Stamp-Editor/' })
+        navigator.serviceWorker.register('/Line-Stamp-Editor/service-worker.js?v=1.0.9', { scope: '/Line-Stamp-Editor/' })
             .then((registration) => {
                 console.log('ServiceWorker registered:', registration.scope);
             })

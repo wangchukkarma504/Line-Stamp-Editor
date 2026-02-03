@@ -4,7 +4,7 @@ const i18n = {
 };
 
 let currentLang = 'en';
-let state = { images: [], currentIndex: 0, isDragging: false, isResizing: false, mx: 0, my: 0, globalMain: null, globalTab: null, pinTarget: null };
+let state = { images: [], currentIndex: 0, isDragging: false, isResizing: false, mx: 0, my: 0, globalMain: null, globalTab: null, pinTarget: null, manualCropMode: false, manualCropSegment: null, manualCropPoints: [], manualCropDrawing: false };
 
 function initMobileNav() {
     const navItems = document.querySelectorAll('.nav-item');
@@ -49,7 +49,8 @@ const getIcon = (name) => {
     const icons = {
         view: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`,
         download: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
-        pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>`
+        pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+        edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
     };
     return icons[name];
 };
@@ -81,7 +82,8 @@ async function handleFiles(files) {
         state.images.push({
             img, name: file.name, x: 0, y: 0, w: 0, h: 0, 
             cols: 4, rows: 4, padding: 0, tolerance: 25, softness: 2, bgActive: true,
-            offCanvas: createOffCanvas(img)
+            offCanvas: createOffCanvas(img),
+            customBounds: {} // stores custom boundaries for each segment: {segmentIndex: [points]}
         });
     }
     initCurrentPage();
@@ -116,7 +118,18 @@ function initCurrentPage() {
         if(badge) badge.textContent = (id==='padding'?curr[id]+'%':curr[id]);
     });
     document.getElementById('bgActive').checked = curr.bgActive;
-    sourceImg.onload = () => { if(curr.w === 0) { curr.w = sourceImg.clientWidth; curr.h = sourceImg.clientHeight; curr.x = 0; curr.y = 0; } updateSelectorUI(); render(); document.getElementById('pageCounter').textContent = `${state.currentIndex + 1} / ${state.images.length}`; };
+    sourceImg.onload = () => {
+        if(curr.w === 0) {
+            curr.w = sourceImg.clientWidth;
+            curr.h = sourceImg.clientHeight;
+            curr.x = 0;
+            curr.y = 0;
+        }
+        // Remove selector boundary after upload
+        selector.style.display = 'none';
+        document.getElementById('pageCounter').textContent = `${state.currentIndex + 1} / ${state.images.length}`;
+        render();
+    };
 }
 
 const handleStart = (e) => {
@@ -167,7 +180,30 @@ function createDrawing(img, offCanvas, targetW, targetH, sData, tx, ty, sheetRef
     const ctx = can.getContext('2d');
     const scale = Math.min(targetW / sData.sw, targetH / sData.sh);
     const dw = sData.sw * scale, dh = sData.sh * scale;
-    ctx.drawImage(img, sData.sx, sData.sy, sData.sw, sData.sh, (targetW-dw)/2, (targetH-dh)/2, dw, dh);
+    const offsetX = (targetW - dw) / 2;
+    const offsetY = (targetH - dh) / 2;
+    
+    // Apply custom mask if available
+    if (sData.customMask) {
+        ctx.save();
+        ctx.beginPath();
+        const points = sData.customMask.map(pt => ({
+            x: (pt.x - sData.sx) * scale + offsetX,
+            y: (pt.y - sData.sy) * scale + offsetY
+        }));
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            ctx.lineTo(points[i].x, points[i].y);
+        }
+        ctx.closePath();
+        ctx.clip();
+    }
+    
+    ctx.drawImage(img, sData.sx, sData.sy, sData.sw, sData.sh, offsetX, offsetY, dw, dh);
+    
+    if (sData.customMask) {
+        ctx.restore();
+    }
     
     if(sheetRef && sheetRef.bgActive && offCanvas && offCanvas.width > 0 && offCanvas.height > 0) {
         const imgData = ctx.getImageData(0, 0, canW, canH);
@@ -223,7 +259,8 @@ function render() {
 
     for (let i = 0; i < curr.rows * curr.cols; i++) {
         const tx = tx0+(i%curr.cols)*cw, ty = ty0+Math.floor(i/curr.cols)*ch;
-        const sData = { sx: tx+(cw*pad), sy: ty+(ch*pad), sw: cw-(cw*pad*2), sh: ch-(ch*pad*2) };
+        const defaultData = { sx: tx+(cw*pad), sy: ty+(ch*pad), sw: cw-(cw*pad*2), sh: ch-(ch*pad*2) };
+        const sData = getCustomSegmentData(curr, i, defaultData);
         const can = createDrawing(curr.img, curr.offCanvas, 370, 320, sData, tx, ty, curr);
         
         let label = `${i18n[currentLang].sticker}${i+1}`, badgeClass = "";
@@ -251,6 +288,9 @@ function createGridItem(lbl, can, index, badgeClass, sData, tx, ty) {
     const pin = document.createElement('button'); pin.className = 'mini-btn pin-btn'; pin.innerHTML = getIcon('pin');
     pin.onclick = () => { state.pinTarget = index; document.getElementById('pinModal').classList.remove('hidden'); };
 
+    const edit = document.createElement('button'); edit.className = 'mini-btn edit-btn'; edit.innerHTML = getIcon('edit');
+    edit.onclick = () => startManualCrop(index);
+
     const view = document.createElement('button'); view.className = 'mini-btn view-btn'; view.innerHTML = getIcon('view');
     view.onclick = () => {
         const curr = state.images[state.currentIndex];
@@ -260,7 +300,7 @@ function createGridItem(lbl, can, index, badgeClass, sData, tx, ty) {
         document.getElementById('bigViewLayer').classList.remove('hidden');
     };
     
-    group.append(pin, view); meta.append(badge, group); div.append(meta, can); return div;
+    group.append(pin, edit, view); meta.append(badge, group); div.append(meta, can); return div;
 }
 
 document.getElementById('setMainBtn').onclick = () => { 
@@ -308,6 +348,351 @@ document.getElementById('dlBtn').onclick = async () => {
     }
     zip.generateAsync({type:"blob"}).then(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = "sticker_pack.zip"; a.click(); });
 };
+
+// Manual Crop Functions
+function startManualCrop(segmentIndex) {
+    state.manualCropMode = true;
+    state.manualCropSegment = segmentIndex;
+    
+    const curr = state.images[state.currentIndex];
+    const natW = curr.img.naturalWidth;
+    const natH = curr.img.naturalHeight;
+    const cw = natW / curr.cols;
+    const ch = natH / curr.rows;
+    const col = segmentIndex % curr.cols;
+    const row = Math.floor(segmentIndex / curr.cols);
+    const pad = curr.padding / 100;
+    
+    // Default segment bounds
+    const segX = col * cw + (cw * pad);
+    const segY = row * ch + (ch * pad);
+    const segW = cw - (cw * pad * 2);
+    const segH = ch - (ch * pad * 2);
+    
+    // If custom bounds exist, use them, otherwise create rectangle from segment
+    if (curr.customBounds[segmentIndex] && curr.customBounds[segmentIndex].length >= 4) {
+        state.manualCropPoints = [...curr.customBounds[segmentIndex]];
+    } else {
+        // Create 4-corner rectangle as starting point
+        state.manualCropPoints = [
+            { x: segX, y: segY },
+            { x: segX + segW, y: segY },
+            { x: segX + segW, y: segY + segH },
+            { x: segX, y: segY + segH }
+        ];
+    }
+    
+    showManualCropOverlay();
+}
+
+function showManualCropOverlay() {
+    const overlay = document.createElement('div');
+    overlay.id = 'manualCropOverlay';
+    overlay.className = 'manual-crop-overlay';
+    
+    const curr = state.images[state.currentIndex];
+    const segIdx = state.manualCropSegment;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = curr.img.naturalWidth;
+    canvas.height = curr.img.naturalHeight;
+    canvas.className = 'manual-crop-canvas';
+    canvas.id = 'cropCanvas';
+    
+    const ctx = canvas.getContext('2d');
+    
+    const controls = document.createElement('div');
+    controls.className = 'manual-crop-controls';
+    controls.innerHTML = `
+        <button class="crop-tool-btn btn-crop-action" id="cropSaveBtn" title="Save">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+        <button class="crop-tool-btn btn-crop-add" id="cropAddPointBtn" title="Add Point">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button class="crop-tool-btn btn-crop-reset" id="cropResetBtn" title="Reset">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+        </button>
+        <button class="crop-tool-btn btn-crop-cancel" id="cropCancelBtn" title="Cancel">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    `;
+    
+    overlay.appendChild(canvas);
+    overlay.appendChild(controls);
+    document.body.appendChild(overlay);
+    
+    let draggingPoint = -1;
+    let addPointMode = false;
+    const handleRadius = 12;
+    
+    function getCanvasCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
+        };
+    }
+    
+    function findPointAt(x, y) {
+        const rect = canvas.getBoundingClientRect();
+        const scale = canvas.width / rect.width;
+        const hitRadius = handleRadius * scale * 1.5;
+        
+        for (let i = 0; i < state.manualCropPoints.length; i++) {
+            const pt = state.manualCropPoints[i];
+            const dist = Math.sqrt((pt.x - x) ** 2 + (pt.y - y) ** 2);
+            if (dist <= hitRadius) return i;
+        }
+        return -1;
+    }
+    
+    function findEdgeAt(x, y) {
+        const rect = canvas.getBoundingClientRect();
+        const scale = canvas.width / rect.width;
+        const hitDist = 15 * scale;
+        
+        for (let i = 0; i < state.manualCropPoints.length; i++) {
+            const p1 = state.manualCropPoints[i];
+            const p2 = state.manualCropPoints[(i + 1) % state.manualCropPoints.length];
+            
+            // Distance from point to line segment
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len === 0) continue;
+            
+            const t = Math.max(0, Math.min(1, ((x - p1.x) * dx + (y - p1.y) * dy) / (len * len)));
+            const projX = p1.x + t * dx;
+            const projY = p1.y + t * dy;
+            const dist = Math.sqrt((x - projX) ** 2 + (y - projY) ** 2);
+            
+            if (dist <= hitDist) return { edge: i, x: projX, y: projY };
+        }
+        return null;
+    }
+    
+    function drawCrop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(curr.img, 0, 0);
+        
+        // Create dark overlay with transparent hole for the crop area
+        ctx.save();
+        
+        // Draw darkened overlay on the entire canvas
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.beginPath();
+        // Outer rectangle (full canvas)
+        ctx.moveTo(0, 0);
+        ctx.lineTo(canvas.width, 0);
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        
+        // Inner hole (crop area) - drawn counter-clockwise to create a hole
+        ctx.moveTo(state.manualCropPoints[0].x, state.manualCropPoints[0].y);
+        for (let i = state.manualCropPoints.length - 1; i >= 0; i--) {
+            ctx.lineTo(state.manualCropPoints[i].x, state.manualCropPoints[i].y);
+        }
+        ctx.closePath();
+        
+        ctx.fill('evenodd');
+        ctx.restore();
+        
+        // Draw border
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(state.manualCropPoints[0].x, state.manualCropPoints[0].y);
+        for (let i = 1; i < state.manualCropPoints.length; i++) {
+            ctx.lineTo(state.manualCropPoints[i].x, state.manualCropPoints[i].y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        
+        // Draw corner handles
+        state.manualCropPoints.forEach((pt, idx) => {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, handleRadius, 0, Math.PI * 2);
+            ctx.fillStyle = draggingPoint === idx ? '#10b981' : '#ffffff';
+            ctx.fill();
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Number label
+            ctx.fillStyle = draggingPoint === idx ? '#fff' : '#10b981';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText((idx + 1).toString(), pt.x, pt.y);
+        });
+        
+        // Show add point mode indicator
+        if (addPointMode) {
+            ctx.fillStyle = 'rgba(139, 92, 246, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, 40);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Click on an edge to add a new point', canvas.width / 2, 22);
+        }
+    }
+    
+    canvas.onmousedown = (e) => {
+        const { x, y } = getCanvasCoords(e);
+        
+        if (addPointMode) {
+            const edge = findEdgeAt(x, y);
+            if (edge) {
+                // Insert new point on edge
+                state.manualCropPoints.splice(edge.edge + 1, 0, { x: edge.x, y: edge.y });
+                addPointMode = false;
+                document.getElementById('cropAddPointBtn').classList.remove('active');
+                drawCrop();
+            }
+            return;
+        }
+        
+        const pointIdx = findPointAt(x, y);
+        if (pointIdx >= 0) {
+            draggingPoint = pointIdx;
+            canvas.style.cursor = 'grabbing';
+        }
+    };
+    
+    canvas.onmousemove = (e) => {
+        const { x, y } = getCanvasCoords(e);
+        
+        if (draggingPoint >= 0) {
+            state.manualCropPoints[draggingPoint] = { x, y };
+            drawCrop();
+        } else {
+            // Update cursor
+            const overPoint = findPointAt(x, y);
+            if (overPoint >= 0) {
+                canvas.style.cursor = 'grab';
+            } else if (addPointMode && findEdgeAt(x, y)) {
+                canvas.style.cursor = 'crosshair';
+            } else {
+                canvas.style.cursor = addPointMode ? 'crosshair' : 'default';
+            }
+        }
+    };
+    
+    canvas.onmouseup = () => {
+        draggingPoint = -1;
+        canvas.style.cursor = 'default';
+    };
+    
+    canvas.onmouseleave = () => {
+        draggingPoint = -1;
+    };
+    
+    // Touch support
+    canvas.ontouchstart = (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const { x, y } = getCanvasCoords(touch);
+        const pointIdx = findPointAt(x, y);
+        if (pointIdx >= 0) draggingPoint = pointIdx;
+    };
+    
+    canvas.ontouchmove = (e) => {
+        e.preventDefault();
+        if (draggingPoint >= 0) {
+            const touch = e.touches[0];
+            const { x, y } = getCanvasCoords(touch);
+            state.manualCropPoints[draggingPoint] = { x, y };
+            drawCrop();
+        }
+    };
+    
+    canvas.ontouchend = () => { draggingPoint = -1; };
+    
+    document.getElementById('cropSaveBtn').onclick = () => {
+        curr.customBounds[segIdx] = [...state.manualCropPoints];
+        closeManualCrop();
+        render();
+    };
+    
+    document.getElementById('cropAddPointBtn').onclick = () => {
+        addPointMode = !addPointMode;
+        document.getElementById('cropAddPointBtn').classList.toggle('active', addPointMode);
+        canvas.style.cursor = addPointMode ? 'crosshair' : 'default';
+        drawCrop();
+    };
+    
+    document.getElementById('cropResetBtn').onclick = () => {
+        // Reset to original segment rectangle
+        const natW = curr.img.naturalWidth;
+        const natH = curr.img.naturalHeight;
+        const cw = natW / curr.cols;
+        const ch = natH / curr.rows;
+        const col = segIdx % curr.cols;
+        const row = Math.floor(segIdx / curr.cols);
+        const pad = curr.padding / 100;
+        const segX = col * cw + (cw * pad);
+        const segY = row * ch + (ch * pad);
+        const segW = cw - (cw * pad * 2);
+        const segH = ch - (ch * pad * 2);
+        
+        state.manualCropPoints = [
+            { x: segX, y: segY },
+            { x: segX + segW, y: segY },
+            { x: segX + segW, y: segY + segH },
+            { x: segX, y: segY + segH }
+        ];
+        addPointMode = false;
+        document.getElementById('cropAddPointBtn').classList.remove('active');
+        drawCrop();
+    };
+    
+    document.getElementById('cropCancelBtn').onclick = closeManualCrop;
+    
+    drawCrop();
+}
+
+function drawCropOverlay(ctx, img, closed = false, cursor = null) {
+    // Legacy function - kept for compatibility
+}
+
+function closeManualCrop() {
+    state.manualCropMode = false;
+    state.manualCropSegment = null;
+    state.manualCropPoints = [];
+    state.manualCropDrawing = false;
+    
+    const overlay = document.getElementById('manualCropOverlay');
+    if (overlay) overlay.remove();
+}
+
+function getCustomSegmentData(curr, segIdx, defaultData) {
+    if (!curr.customBounds[segIdx] || curr.customBounds[segIdx].length < 3) {
+        return defaultData;
+    }
+    
+    const points = curr.customBounds[segIdx];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    
+    points.forEach(pt => {
+        minX = Math.min(minX, pt.x);
+        minY = Math.min(minY, pt.y);
+        maxX = Math.max(maxX, pt.x);
+        maxY = Math.max(maxY, pt.y);
+    });
+    
+    return {
+        sx: minX,
+        sy: minY,
+        sw: maxX - minX,
+        sh: maxY - minY,
+        customMask: points
+    };
+}
 
 initResizers(); initMobileNav();
 window.onresize = () => { updateSelectorUI(); render(); };

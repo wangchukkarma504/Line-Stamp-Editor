@@ -1,5 +1,5 @@
 const BASE_PATH = '/Line-Stamp-Editor';
-const VERSION = '1.0.8';
+const VERSION = '1.0.9';
 const CACHE_NAME = `stickerstudio-${VERSION}`;
 const ASSETS_TO_CACHE = [
   BASE_PATH + '/',
