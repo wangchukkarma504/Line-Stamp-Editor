@@ -159,8 +159,8 @@ function updateSelectorUI() {
 });
 
 function createDrawing(img, offCanvas, targetW, targetH, sData, tx, ty, sheetRef) {
-    const canW = Math.floor(targetW);
-    const canH = Math.floor(targetH);
+    const canW = Math.floor(targetW) || 1;
+    const canH = Math.floor(targetH) || 1;
     const can = document.createElement('canvas'); 
     can.width = canW; 
     can.height = canH;
@@ -172,8 +172,10 @@ function createDrawing(img, offCanvas, targetW, targetH, sData, tx, ty, sheetRef
     if(sheetRef && sheetRef.bgActive && offCanvas && offCanvas.width > 0 && offCanvas.height > 0) {
         const imgData = ctx.getImageData(0, 0, canW, canH);
         const d = imgData.data;
-        const sx = Math.floor(Math.max(0, Math.min(tx, offCanvas.width - 1)));
-        const sy = Math.floor(Math.max(0, Math.min(ty, offCanvas.height - 1)));
+        const offW = Math.floor(offCanvas.width);
+        const offH = Math.floor(offCanvas.height);
+        const sx = Math.floor(Math.max(0, Math.min(tx || 0, offW - 1))) | 0;
+        const sy = Math.floor(Math.max(0, Math.min(ty || 0, offH - 1))) | 0;
         const sample = offCanvas.getContext('2d').getImageData(sx, sy, 1, 1).data;
         const avgBG = [sample[0], sample[1], sample[2]];
         const tol = sheetRef.tolerance, soft = sheetRef.softness;

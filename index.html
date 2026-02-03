@@ -156,7 +156,7 @@
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/Line-Stamp-Editor/service-worker.js?v=1.0.2', { scope: '/Line-Stamp-Editor/' })
+        navigator.serviceWorker.register('/Line-Stamp-Editor/service-worker.js?v=1.0.3', { scope: '/Line-Stamp-Editor/' })
             .then((registration) => {
                 console.log('ServiceWorker registered:', registration.scope);
             })
