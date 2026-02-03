@@ -1,10 +1,12 @@
-const CACHE_NAME = 'stickerstudio-v1';
+const BASE_PATH = '/Line-Stamp-Editor';
+const VERSION = '1.0.0';
+const CACHE_NAME = `stickerstudio-${VERSION}`;
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/script.js',
-  '/manifest.json',
+  BASE_PATH + '/',
+  BASE_PATH + '/index.html',
+  BASE_PATH + '/style.css',
+  BASE_PATH + '/script.js',
+  BASE_PATH + '/manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap'
 ];

@@ -2,7 +2,7 @@
   "name": "StickerStudio Pro",
   "short_name": "StickerStudio",
   "description": "Professional Sticker Creator for LINE and messaging apps",
-  "start_url": "/",
+  "start_url": "/Line-Stamp-Editor/",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#6c5ce7",
