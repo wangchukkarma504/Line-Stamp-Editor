@@ -1,5 +1,5 @@
 const BASE_PATH = '/Line-Stamp-Editor';
-const VERSION = '1.0.9';
+const VERSION = '1.0.10'; // Bump version to force cache update
 const CACHE_NAME = `stickerstudio-${VERSION}`;
 const ASSETS_TO_CACHE = [
   BASE_PATH + '/',
@@ -12,14 +12,16 @@ const ASSETS_TO_CACHE = [
 ];
 
 // Install event - cache assets
+// On install, clear all caches and re-cache assets (force update)
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
-      .then(() => self.skipWaiting())
+    caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key)))).then(() => {
+      return caches.open(CACHE_NAME)
+        .then((cache) => {
+          console.log('Opened cache (fresh)');
+          return cache.addAll(ASSETS_TO_CACHE);
+        });
+    }).then(() => self.skipWaiting())
   );
 });
 
@@ -43,33 +45,19 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Always try network first, fallback to cache
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-
-        // Clone the request
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest).then((response) => {
-          // Check if valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          // Clone the response
+        // If valid, update cache
+        if (response && response.status === 200 && response.type === 'basic') {
           const responseToCache = response.clone();
-
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-
-          return response;
-        });
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return response;
       })
+      .catch(() => caches.match(event.request))
   );
 });
