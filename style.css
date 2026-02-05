@@ -341,3 +341,84 @@ input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; heigh
 }
 
 .hidden { display: none !important; }
+
+
+/* Common style for all 8 handles */
+.resize-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--primary);
+    border: 2px solid white;
+    border-radius: 50%;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Position the 8 handles */
+.handle-nw { top: -6px; left: -6px; cursor: nw-resize; }
+.handle-n  { top: -6px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+.handle-ne { top: -6px; right: -6px; cursor: ne-resize; }
+.handle-e  { top: 50%; right: -6px; transform: translateY(-50%); cursor: e-resize; }
+.handle-se { bottom: -6px; right: -6px; cursor: se-resize; }
+.handle-s  { bottom: -6px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+.handle-sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+.handle-w  { top: 50%; left: -6px; transform: translateY(-50%); cursor: w-resize; }
+
+
+/* Update .selector to remove the background-image grid */
+.selector {
+    position: absolute;
+    border: 2px solid var(--primary);
+    cursor: move;
+    touch-action: none;
+    box-sizing: border-box;
+    /* REMOVED the linear-gradient background-image here */
+    background: transparent; 
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* Dim outside area */
+}
+
+/* Styles for the draggable internal lines */
+.grid-line-v, .grid-line-h {
+    position: absolute;
+    background-color: rgba(239, 68, 68, 0.8); /* Red lines */
+    pointer-events: auto; /* Make sure we can touch them */
+    z-index: 40;
+}
+
+/* Vertical Line Styles */
+.grid-line-v {
+    top: 0; bottom: 0;
+    width: 4px; /* Thickness of hit area */
+    margin-left: -2px; /* Center alignment */
+    cursor: col-resize;
+}
+/* Visual thin line inside the clickable area */
+.grid-line-v::after {
+    content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
+    width: 1px; background: #ef4444;
+}
+
+/* Horizontal Line Styles */
+.grid-line-h {
+    left: 0; right: 0;
+    height: 4px; /* Thickness of hit area */
+    margin-top: -2px; /* Center alignment */
+    cursor: row-resize;
+}
+.grid-line-h::after {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0;
+    height: 1px; background: #ef4444;
+}
+
+/* Intersection Dots */
+.grid-dot {
+    position: absolute;
+    width: 10px; height: 10px;
+    background: #fff;
+    border: 1px solid #ef4444;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 50;
+    cursor: move; /* Indicates you can move lines */
+}
